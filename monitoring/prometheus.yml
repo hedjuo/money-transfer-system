@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'apigw-app'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+
+  - job_name: 'payment-app'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['host.docker.internal:8490']
+
+  - job_name: 'accounts-app'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['host.docker.internal:8085']
+
+  - job_name: 'fraud-detection-app'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: [ 'host.docker.internal:8082' ]

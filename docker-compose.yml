@@ -1,0 +1,278 @@
+version: "3.5"
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+
+    ports:
+      - 9090:9090
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: grafana
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  postgres:
+    container_name: postgres
+    image: postgres:13.2
+    restart: always
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/data/db
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.4
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - 22181:2181
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.4
+    depends_on:
+      - zookeeper
+    ports:
+      - 29092:29092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://kafka:29092
+#      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  eureka:
+    image: app/eureka-server:latest
+    container_name: eureka
+    depends_on: ["postgres", "redis", "kafka"]
+    ports:
+      - 8761:8761
+      - 8081:8081
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8761/actuator/health" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  apigw:
+    image: app/apigw:latest
+    container_name: apigw
+    depends_on: ["eureka", "redis"]
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    ports:
+      - 8080:8080
+
+    environment:
+      DISCOVERY_URL: http://eureka:8761/eureka/
+      REDIS_HOST: redis
+
+  dbmigrations:
+    image: app/dbmigrations:latest
+    container_name: migrations
+    depends_on: ["postgres"]
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8989/actuator/health" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+
+  payments:
+    image: app/payments:latest
+    container_name: payments-1
+#    deploy:
+#      mode: replicated
+#      replicas: 3
+    depends_on:
+      eureka:
+        condition: service_healthy
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      dbmigrations:
+        condition: service_healthy
+
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8490/actuator/health" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+    environment:
+      DISCOVERY_URL: http://eureka:8761/eureka/
+      REDIS_HOST: redis
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+    ports:
+      - 8490:8490
+
+#  payments-2:
+#    image: app/payments:latest
+#    container_name: payments-2
+#    #    deploy:
+#    #      mode: replicated
+#    #      replicas: 3
+#    depends_on:
+#      eureka:
+#        condition: service_healthy
+#      postgres:
+#        condition: service_started
+#      redis:
+#        condition: service_started
+#      dbmigrations:
+#        condition: service_healthy
+#
+#    healthcheck:
+#      test: [ "CMD", "curl", "-f", "http://localhost:8491/actuator/health" ]
+#      interval: 30s
+#      timeout: 5s
+#      retries: 5
+#
+#    environment:
+#      DISCOVERY_URL: http://eureka:8761/eureka/
+#      REDIS_HOST: redis
+#      POSTGRES_HOST: postgres
+#      POSTGRES_PORT: 5432
+#    ports:
+#      - 8491:8490
+#
+#  payments-3:
+#    image: app/payments:latest
+#    container_name: payments-3
+#    #    deploy:
+#    #      mode: replicated
+#    #      replicas: 3
+#    depends_on:
+#      eureka:
+#        condition: service_healthy
+#      postgres:
+#        condition: service_started
+#      redis:
+#        condition: service_started
+#      dbmigrations:
+#        condition: service_healthy
+#
+#    healthcheck:
+#      test: [ "CMD", "curl", "-f", "http://localhost:8491/actuator/health" ]
+#      interval: 30s
+#      timeout: 5s
+#      retries: 5
+#
+#    environment:
+#      DISCOVERY_URL: http://eureka:8761/eureka/
+#      REDIS_HOST: redis
+#      POSTGRES_HOST: postgres
+#      POSTGRES_PORT: 5432
+#    ports:
+#      - 8492:8490
+
+  accounts:
+    image: app/accounts:latest
+    container_name: accounts
+    depends_on:
+      eureka:
+        condition: service_healthy
+      payments:
+        condition: service_healthy
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8085/actuator/health" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    ports:
+      - 8085:8085
+    environment:
+      DISCOVERY_URL: http://eureka:8761/eureka/
+      KAFKA_HOST: kafka
+      KAFKA_PORT: 29092
+      REDIS_HOST: redis
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+
+  fraud-detection:
+    image: app/fraud-detection:latest
+    container_name: fraud-detection
+    depends_on:
+      eureka:
+        condition: service_healthy
+      payments:
+        condition: service_healthy
+    environment:
+      DISCOVERY_URL: http://eureka:8761/eureka/
+    ports:
+      - 8082:8082
+
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8082/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  tx-event-publisher:
+    image: app/tx-event-publisher:latest
+    container_name: tx-event-publisher
+    depends_on:
+      eureka:
+        condition: service_healthy
+      postgres:
+        condition: service_started
+      kafka:
+        condition: service_started
+      payments:
+        condition: service_healthy
+    environment:
+      DISCOVERY_URL: http://eureka:8761/eureka/
+      REDIS_HOST: redis
+      KAFKA_HOST: kafka
+      KAFKA_PORT: 29092
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
