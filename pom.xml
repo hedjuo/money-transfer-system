@@ -18,6 +18,7 @@
 	  <module>tx-event-publisher</module>
 	  <module>accounts</module>
 	  <module>dbmigrations</module>
+	  <module>cli-tool</module>
 	</modules>
 
 	<parent>

@@ -1,0 +1,18 @@
+server:
+  port: 3333
+
+spring:
+  application:
+    name: db-migrations
+  cloud:
+    config:
+      enabled: false
+  datasource:
+    url: jdbc:postgresql://localhost:5432/postgres
+    username: admin
+    password: password
+  shell:
+    interactive:
+      enabled: true
+
+logging.level.root: info
