@@ -1,0 +1,25 @@
+@startuml
+!theme plain
+title Update account cache
+
+database "DB" as db #LightGray
+participant "Tx event poller" as poller #LightYellow
+participant "Topic" as topic #LightBlue
+participant "Consumer" as consumer
+database DB as db
+participant "Redis" as redis #LightGreen
+
+activate poller
+db -> poller: Load N transaction events()
+poller -> topic: Send batch of events to Kafka topic
+poller -> db: Delete batch of event from DB
+deactivate poller
+
+group Async
+    topic -> consumer: Get event
+    db -> consumer: Load Account
+    consumer -> redis: Store Account in cache
+end
+
+
+@enduml

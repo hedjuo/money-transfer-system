@@ -1,0 +1,34 @@
+@startuml
+!theme plain
+title Money Transfer Transaction Flow
+
+participant "Client" as client #LightBlue
+participant "API GW" as api #LightGreen
+participant "Payment" as payment #LightYellow
+database "DB" as db #LightGray
+participant "Fraud Detection" as fraud
+
+client -> api: POST /transfer
+activate api
+
+api -> payment: initiateTransfer()
+
+payment -> fraud: Inspect
+fraud -> payment: Result: OK
+payment -> db: Begin transaction
+activate payment
+payment <- db: Load sender and receiver details
+payment -> payment: Move funds
+payment -> db: Save sender's new balance
+payment -> db: Save receiver's new balance
+payment -> db: Store transaction info
+payment -> db: Store transaction event
+payment -> db: Commit transaction
+deactivate payment
+
+api <-- payment: TransactionDTO
+deactivate payment
+
+client <-- api: 201 Created
+deactivate api
+@enduml
