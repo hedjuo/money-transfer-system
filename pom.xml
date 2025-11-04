@@ -17,6 +17,7 @@
 	  <module>fraud-detection</module>
 	  <module>tx-event-publisher</module>
 	  <module>accounts</module>
+	  <module>dbmigrations</module>
 	</modules>
 
 	<parent>
