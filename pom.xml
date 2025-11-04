@@ -19,6 +19,7 @@
 	  <module>accounts</module>
 	  <module>dbmigrations</module>
 	  <module>cli-tool</module>
+	  <module>apigw</module>
 	</modules>
 
 	<parent>

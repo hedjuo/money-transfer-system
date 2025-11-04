@@ -1,0 +1,74 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gw
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  cloud:
+    gateway:
+      server:
+        webflux:
+          metrics:
+            enabled: true
+          routes:
+            - id: payments
+              uri: lb://payments
+              predicates:
+                - Path=/api/v1/payments/transfer/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    keyResolver: "#{@apiKeyResolver}"
+                    redis-rate-limiter.replenishRate: 200000 # tokens added per second
+                    redis-rate-limiter.burstCapacity: 300000   # bucket size (max burst)
+                    redis-rate-limiter.requestedTokens: 1  # tokens consumed per request
+                    statusCode: TOO_MANY_REQUESTS
+            - id: accounts
+              uri: lb://accounts
+              predicates:
+                - Path=/api/v1/accounts/**
+            - id: clients
+              uri: lb://accounts
+              predicates:
+                - Path=/api/v1/clients/**
+              
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,prometheus"   # expose /actuator/prometheus
+      base-path: /actuator
+  metrics:
+    tags:
+      application: reactive-payments-app
+    distribution:
+      # enable histogram for HTTP server metrics -> needed for p95/p99
+      percentiles-histogram:
+        http.server.requests: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+eureka:
+  client:
+    enabled: true
+    fetch-registry: true
+    service-url:
+      defaultZone: ${DISCOVERY_URL:http://localhost:8761/eureka}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      paymentsCircuitBreaker:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10000
+        permitted-number-of-calls-in-half-open-state: 3
