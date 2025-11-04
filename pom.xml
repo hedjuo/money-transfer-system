@@ -14,6 +14,7 @@
 	<modules>
 	  <module>models</module>
 	  <module>payments</module>
+	  <module>fraud-detection</module>
 	</modules>
 
 	<parent>
