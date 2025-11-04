@@ -1,0 +1,58 @@
+server:
+  port: 8490
+
+spring:
+  application:
+    name: payments
+  r2dbc:
+    url: r2dbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/postgres
+    username: admin
+    password: password
+  flyway:
+    url: r2dbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/postgres
+    locations: classpath:db/migrations
+    user: admin
+    password: password
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,prometheus"   # expose /actuator/prometheus
+      base-path: /actuator
+  metrics:
+    tags:
+      application: reactive-payments-app
+    distribution:
+      # enable histogram for HTTP server metrics -> needed for p95/p99
+      percentiles-histogram:
+        http.server.requests: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+eureka:
+  client:
+    enabled: true
+    fetch-registry: true
+    service-url:
+      defaultZone: ${DISCOVERY_URL:http://localhost:8761/eureka}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      fraudDetection:
+        registerHealthIndicator: true
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+

@@ -1,0 +1,14 @@
+spring:
+  cloud:
+    config:
+      enabled: false
+  application:
+    name: payments
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/postgres
+    username: admin
+    password: password
+
+eureka:
+  client:
+    enabled: false

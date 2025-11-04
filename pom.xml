@@ -13,6 +13,7 @@
 	
 	<modules>
 	  <module>models</module>
+	  <module>payments</module>
 	</modules>
 
 	<parent>

@@ -1,0 +1,10 @@
+package com.acme.bank.payments.domain.frauddetection;
+
+import com.acme.bank.payments.domain.model.FraudInspectionRequest;
+import com.acme.bank.payments.domain.model.FraudInspectionResult;
+
+import java.util.concurrent.CompletableFuture;
+
+public interface FraudDetectionService {
+    CompletableFuture<FraudInspectionResult> inspect(FraudInspectionRequest request);
+}
