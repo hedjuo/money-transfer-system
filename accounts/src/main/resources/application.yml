@@ -1,0 +1,32 @@
+server:
+  port: 8085
+
+spring:
+  cloud:
+    config:
+      enabled: false
+
+  application:
+    name: accounts
+
+  kafka:
+    consumer:
+      bootstrap-servers: ${KAFKA_HOST:localhost}:${KAFKA_PORT:29092}
+      group-id: "account-updater"
+
+  r2dbc:
+    url: r2dbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/postgres
+    username: admin
+    password: password
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+eureka:
+  client:
+    enabled: true
+    fetch-registry: true
+    service-url:
+      defaultZone: ${DISCOVERY_URL:http://localhost:8761/eureka}
