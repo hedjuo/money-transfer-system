@@ -1,0 +1,42 @@
+spring:
+  cloud:
+    config:
+      enabled: false
+      import-check:
+        enabled: false
+  application:
+    name: tx-event-publisher
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:locahost}:${POSTGRES_PORT:5432}/postgres
+
+    username: admin
+    password: password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+app:
+  instance-id: "${HOSTNAME:local}-${random.uuid}"
+
+  worker:
+    batch-size: ${BATCH_SIZE:1000}
+    poll-delay-ms: 500
+    max-attempts: 100
+    claim-timeout-sec: 300
+
+kafka:
+  bootstrap-servers: ${KAFKA_HOST:locahost}:${KAFKA_PORT:29092}
+  transaction-events-topic: "transaction-events"
+  client-id: "tx-event-publisher"
+  transactional-id-prefix: "tx-" # will append instance-id
+  acks: "all"
+  retries: 100
+  request-timeout-ms: 60000
+  delivery-timeout-ms: 120000
+  enable-idempotence: true
+  linger-ms: 5
+  compression-type: "zstd"
