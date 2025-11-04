@@ -11,6 +11,10 @@
 	<name>parent-project</name>
 	<description>Root project for the case study implementation</description>
 	
+	<modules>
+	  <module>models</module>
+	</modules>
+
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
